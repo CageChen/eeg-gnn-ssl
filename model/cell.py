@@ -15,8 +15,15 @@ import torch.nn as nn
 
 
 class DiffusionGraphConv(nn.Module):
-    def __init__(self, num_supports, input_dim, hid_dim, num_nodes,
-                 max_diffusion_step, output_dim, bias_start=0.0,
+
+    def __init__(self,
+                 num_supports,
+                 input_dim,
+                 hid_dim,
+                 num_nodes,
+                 max_diffusion_step,
+                 output_dim,
+                 bias_start=0.0,
                  filter_type='laplacian'):
         """
         Diffusion graph convolution
@@ -37,13 +44,8 @@ class DiffusionGraphConv(nn.Module):
         self._num_nodes = num_nodes
         self._max_diffusion_step = max_diffusion_step
         self._filter_type = filter_type
-        self.weight = nn.Parameter(
-            torch.FloatTensor(
-                size=(
-                    self._input_size *
-                    num_matrices,
-                    output_dim)))
-        self.biases = nn.Parameter(torch.FloatTensor(size=(output_dim,)))
+        self.weight = nn.Parameter(torch.FloatTensor(size=(self._input_size * num_matrices, output_dim)))
+        self.biases = nn.Parameter(torch.FloatTensor(size=(output_dim, )))
         nn.init.xavier_normal_(self.weight.data, gain=1.414)
         nn.init.constant_(self.biases.data, val=bias_start)
 
@@ -88,8 +90,7 @@ class DiffusionGraphConv(nn.Module):
                 for k in range(2, self._max_diffusion_step + 1):
                     # (batch, num_nodes, input_dim+hidden_dim)
                     x2 = 2 * torch.matmul(support, x1) - x0
-                    x = self._concat(
-                        x, x2)  # (batch, ?, num_nodes, input_dim+hidden_dim)
+                    x = self._concat(x, x2)  # (batch, ?, num_nodes, input_dim+hidden_dim)
                     x1, x0 = x2, x1
 
         num_matrices = len(supports) * \
@@ -98,20 +99,8 @@ class DiffusionGraphConv(nn.Module):
         x = torch.transpose(x, dim0=1, dim1=2)
         # (batch, num_nodes, input_hidden_size, num_matrices)
         x = torch.transpose(x, dim0=2, dim1=3)
-        x = torch.reshape(
-            x,
-            shape=[
-                batch_size,
-                self._num_nodes,
-                input_size *
-                num_matrices])
-        x = torch.reshape(
-            x,
-            shape=[
-                batch_size *
-                self._num_nodes,
-                input_size *
-                num_matrices])
+        x = torch.reshape(x, shape=[batch_size, self._num_nodes, input_size * num_matrices])
+        x = torch.reshape(x, shape=[batch_size * self._num_nodes, input_size * num_matrices])
         # (batch_size * self._num_nodes, output_size)
         x = torch.matmul(x, self.weight)
         x = torch.add(x, self.biases)
@@ -123,15 +112,14 @@ class DCGRUCell(nn.Module):
     Graph Convolution Gated Recurrent Unit Cell.
     """
 
-    def __init__(
-            self,
-            input_dim,
-            num_units,
-            max_diffusion_step,
-            num_nodes,
-            filter_type="laplacian",
-            nonlinearity='tanh',
-            use_gc_for_ru=True):
+    def __init__(self,
+                 input_dim,
+                 num_units,
+                 max_diffusion_step,
+                 num_nodes,
+                 filter_type="laplacian",
+                 nonlinearity='tanh',
+                 use_gc_for_ru=True):
         """
         Args:
             input_dim: input feature dim
@@ -157,22 +145,20 @@ class DCGRUCell(nn.Module):
         else:
             self._num_supports = 1
 
-        self.dconv_gate = DiffusionGraphConv(
-            num_supports=self._num_supports,
-            input_dim=input_dim,
-            hid_dim=num_units,
-            num_nodes=num_nodes,
-            max_diffusion_step=max_diffusion_step,
-            output_dim=num_units * 2,
-            filter_type=filter_type)
-        self.dconv_candidate = DiffusionGraphConv(
-            num_supports=self._num_supports,
-            input_dim=input_dim,
-            hid_dim=num_units,
-            num_nodes=num_nodes,
-            max_diffusion_step=max_diffusion_step,
-            output_dim=num_units,
-            filter_type=filter_type)
+        self.dconv_gate = DiffusionGraphConv(num_supports=self._num_supports,
+                                             input_dim=input_dim,
+                                             hid_dim=num_units,
+                                             num_nodes=num_nodes,
+                                             max_diffusion_step=max_diffusion_step,
+                                             output_dim=num_units * 2,
+                                             filter_type=filter_type)
+        self.dconv_candidate = DiffusionGraphConv(num_supports=self._num_supports,
+                                                  input_dim=input_dim,
+                                                  hid_dim=num_units,
+                                                  num_nodes=num_nodes,
+                                                  max_diffusion_step=max_diffusion_step,
+                                                  output_dim=num_units,
+                                                  filter_type=filter_type)
 
     @property
     def output_size(self):
@@ -193,12 +179,9 @@ class DCGRUCell(nn.Module):
             fn = self.dconv_gate
         else:
             fn = self._fc
-        value = torch.sigmoid(
-            fn(supports, inputs, state, output_size, bias_start=1.0))
+        value = torch.sigmoid(fn(supports, inputs, state, output_size, bias_start=1.0))
         value = torch.reshape(value, (-1, self._num_nodes, output_size))
-        r, u = torch.split(
-            value, split_size_or_sections=int(
-                output_size / 2), dim=-1)
+        r, u = torch.split(value, split_size_or_sections=int(output_size / 2), dim=-1)
         r = torch.reshape(r, (-1, self._num_nodes * self._num_units))
         u = torch.reshape(u, (-1, self._num_nodes * self._num_units))
         # batch_size, self._num_nodes * output_size

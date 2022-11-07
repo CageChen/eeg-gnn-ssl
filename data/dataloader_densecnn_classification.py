@@ -1,5 +1,6 @@
 """Dataloader for Dense-CNN"""
 import sys
+
 sys.path.append('../')
 from pathlib import Path
 import scipy.signal
@@ -23,12 +24,7 @@ sys.path.append(repo_paths)
 FILEMARKER_DIR = Path(repo_paths).joinpath('data/file_markers_classification')
 
 
-def computeSliceMatrix(
-        h5_fn,
-        edf_fn,
-        seizure_idx,
-        clip_len=60,
-        is_fft=False):
+def computeSliceMatrix(h5_fn, edf_fn, seizure_idx, clip_len=60, is_fft=False):
     """
     Comvert entire EEG sequence into clips of length clip_len
     Args:
@@ -40,10 +36,10 @@ def computeSliceMatrix(
     Returns:
         eeg_clip: eeg clip (clip_len, num_channels, time_step_size*freq)
     """
-    offset = 2 # hard-coded offset
+    offset = 2  # hard-coded offset
 
     with h5py.File(h5_fn, 'r') as f:
-        signal_array = f["resampled_signal"][()] # (num_channels, num_data_points)
+        signal_array = f["resampled_signal"][()]  # (num_channels, num_data_points)
         resampled_freq = f["resample_freq"][()]
     assert resampled_freq == FREQUENCY
 
@@ -57,9 +53,9 @@ def computeSliceMatrix(
         pre_seizure_end = 0
 
     # start_time: start of current seizure - offset / end of previous seizure, whichever comes later
-    start_t = max(pre_seizure_end + 1, int(FREQUENCY*(curr_seizure_time[0] - offset)))
-    # end_time: (start_time + clip_len) / end of current seizure, whichever comes first    
-    end_t = min(start_t + int(FREQUENCY*clip_len), int(FREQUENCY*curr_seizure_time[1]))
+    start_t = max(pre_seizure_end + 1, int(FREQUENCY * (curr_seizure_time[0] - offset)))
+    # end_time: (start_time + clip_len) / end of current seizure, whichever comes first
+    end_t = min(start_t + int(FREQUENCY * clip_len), int(FREQUENCY * curr_seizure_time[1]))
 
     # get corresponding eeg clip
     signal_array = signal_array[:, start_t:end_t]
@@ -70,31 +66,31 @@ def computeSliceMatrix(
     ## Padding zeros
     seq_len = eeg_clip.shape[-1]
     if is_fft:
-        diff = int(FREQUENCY * clip_len/2) - eeg_clip.shape[-1]
+        diff = int(FREQUENCY * clip_len / 2) - eeg_clip.shape[-1]
     else:
-        diff = FREQUENCY * clip_len - eeg_clip.shape[-1]    
+        diff = FREQUENCY * clip_len - eeg_clip.shape[-1]
     if diff > 0:
         zeros = np.zeros((eeg_clip.shape[0], diff))
         eeg_clip = np.concatenate((eeg_clip, zeros), axis=1)
     elif diff < 0:
-        eeg_clip = eeg_clip[:,:int(FREQUENCY * window_size)]
+        eeg_clip = eeg_clip[:, :int(FREQUENCY * window_size)]
 
     return eeg_clip.T, seq_len
 
 
 class SeizureDataset(Dataset):
-    def __init__(
-            self,
-            input_dir,
-            raw_data_dir,
-            max_seq_len=60,
-            standardize=True,
-            scaler=None,
-            split='train',
-            padding_val=0,
-            data_augment=False,
-            use_fft=False,
-            preproc_dir=None):
+
+    def __init__(self,
+                 input_dir,
+                 raw_data_dir,
+                 max_seq_len=60,
+                 standardize=True,
+                 scaler=None,
+                 split='train',
+                 padding_val=0,
+                 data_augment=False,
+                 use_fft=False,
+                 preproc_dir=None):
         """
         Args:
             input_dir: dir to resampled signals h5 files
@@ -130,15 +126,15 @@ class SeizureDataset(Dataset):
                     self.edf_files.append(os.path.join(path, name))
 
         # read file tuples: (edf_fn, seizure_class, seizure_idx)
-        file_marker_dir = os.path.join(FILEMARKER_DIR, split+"Set_seizure_files.txt")
+        file_marker_dir = os.path.join(FILEMARKER_DIR, split + "Set_seizure_files.txt")
         with open(file_marker_dir, 'r') as f:
             f_str = f.readlines()
-        
+
         self.file_tuples = []
         for i in range(len(f_str)):
             tup = f_str[i].strip("\n").split(",")
-            tup[1] = int(tup[1]) # seizure class
-            tup[2] = int(tup[2]) # seizure index
+            tup[1] = int(tup[1])  # seizure class
+            tup[2] = int(tup[2])  # seizure index
             self.file_tuples.append(tup)
         self.size = len(self.file_tuples)
 
@@ -151,12 +147,12 @@ class SeizureDataset(Dataset):
     def _random_reflect(self, eeg_clip):
         swap_pairs = get_swap_pairs(INCLUDED_CHANNELS)
         eeg_clip_reflect = eeg_clip.copy()
-        if(np.random.choice([True, False])):            
+        if (np.random.choice([True, False])):
             for pair in swap_pairs:
-                eeg_clip_reflect[:,[pair[0],pair[1]]] = eeg_clip[:,[pair[1], pair[0]]]
+                eeg_clip_reflect[:, [pair[0], pair[1]]] = eeg_clip[:, [pair[1], pair[0]]]
 
         return eeg_clip_reflect
-    
+
     def _random_scale(self, eeg_clip):
         scale_factor = np.random.uniform(0.8, 1.2)
         if self.use_fft:
@@ -164,7 +160,6 @@ class SeizureDataset(Dataset):
         else:
             eeg_clip *= scale_factor
         return eeg_clip
-
 
     def __getitem__(self, idx):
         """
@@ -182,13 +177,13 @@ class SeizureDataset(Dataset):
         edf_file = edf_file[0]
 
         # preprocess
-        if self.preproc_dir is not None: # load preprocessed
+        if self.preproc_dir is not None:  # load preprocessed
             h5_fn = edf_fn.split('/')[-1] + '_' + str(seizure_idx) + '.h5'
             with h5py.File(os.path.join(self.preproc_dir, h5_fn), 'r') as hf:
                 try:
-                    curr_feature = hf['clip'][()] # (seq_len, num_nodes, input_dim)
+                    curr_feature = hf['clip'][()]  # (seq_len, num_nodes, input_dim)
                 except:
-                    curr_feature = hf['features'][()] # (seq_len, num_nodes, input_dim)
+                    curr_feature = hf['features'][()]  # (seq_len, num_nodes, input_dim)
             # padding
             curr_len = curr_feature.shape[0]
             seq_len = np.minimum(curr_len, self.max_seq_len)
@@ -197,16 +192,16 @@ class SeizureDataset(Dataset):
                 padded_feature = np.ones((len_pad, curr_feature.shape[1], curr_feature.shape[2])) * 0.
                 eeg_clip = np.concatenate((curr_feature, padded_feature), axis=0)
             else:
-                eeg_clip = curr_feature[:self.max_seq_len,:]
+                eeg_clip = curr_feature[:self.max_seq_len, :]
             eeg_clip = np.transpose(eeg_clip, (1, 0, 2)).reshape(19, -1).T
         else:
-            resample_sig_dir = os.path.join(
-                self.input_dir, edf_fn.split('.edf')[0] + '.h5')
-            eeg_clip, seq_len = computeSliceMatrix(
-                h5_fn=resample_sig_dir, edf_fn=edf_file, seizure_idx=seizure_idx,
-                clip_len=self.max_seq_len, is_fft=self.use_fft
-            ) # already padded
-            
+            resample_sig_dir = os.path.join(self.input_dir, edf_fn.split('.edf')[0] + '.h5')
+            eeg_clip, seq_len = computeSliceMatrix(h5_fn=resample_sig_dir,
+                                                   edf_fn=edf_file,
+                                                   seizure_idx=seizure_idx,
+                                                   clip_len=self.max_seq_len,
+                                                   is_fft=self.use_fft)  # already padded
+
         # data augmentation
         if self.data_augment:
             eeg_clip = self._random_reflect(eeg_clip)
@@ -222,21 +217,20 @@ class SeizureDataset(Dataset):
         seq_len = torch.LongTensor([seq_len])
         writeout_fn = edf_fn + "_" + str(seizure_idx)
 
-        return (x, y, seq_len, [], [], writeout_fn) # for dataloader consistency
+        return (x, y, seq_len, [], [], writeout_fn)  # for dataloader consistency
 
 
-def load_dataset_densecnn_classification(
-        input_dir,
-        raw_data_dir,
-        train_batch_size,
-        test_batch_size=None,
-        max_seq_len=60,
-        standardize=True,
-        num_workers=8,
-        padding_val=0.,
-        augmentation=False,
-        use_fft=False,
-        preproc_dir=None):
+def load_dataset_densecnn_classification(input_dir,
+                                         raw_data_dir,
+                                         train_batch_size,
+                                         test_batch_size=None,
+                                         max_seq_len=60,
+                                         standardize=True,
+                                         num_workers=8,
+                                         padding_val=0.,
+                                         augmentation=False,
+                                         use_fft=False,
+                                         preproc_dir=None):
     """
     Args:
         input_dir: dir to resampled signals h5 files
@@ -258,10 +252,8 @@ def load_dataset_densecnn_classification(
 
     # load per-node mean and std
     if standardize:
-        means_dir = os.path.join(
-            FILEMARKER_DIR, 'means_fft_'+str(max_seq_len)+'s_single.pkl')
-        stds_dir = os.path.join(
-            FILEMARKER_DIR, 'stds_fft_'+str(max_seq_len)+'s_single.pkl')
+        means_dir = os.path.join(FILEMARKER_DIR, 'means_fft_' + str(max_seq_len) + 's_single.pkl')
+        stds_dir = os.path.join(FILEMARKER_DIR, 'stds_fft_' + str(max_seq_len) + 's_single.pkl')
         with open(means_dir, 'rb') as f:
             means = pickle.load(f)
         with open(stds_dir, 'rb') as f:
@@ -297,10 +289,7 @@ def load_dataset_densecnn_classification(
             shuffle = False
             batch_size = test_batch_size
 
-        loader = DataLoader(dataset=dataset,
-                            shuffle=shuffle,
-                            batch_size=batch_size,
-                            num_workers=num_workers)
+        loader = DataLoader(dataset=dataset, shuffle=shuffle, batch_size=batch_size, num_workers=num_workers)
         dataloaders[split] = loader
         datasets[split] = dataset
 

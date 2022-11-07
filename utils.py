@@ -70,8 +70,7 @@ def get_save_dir(base_dir, training, id_max=500):
     """
     for uid in range(1, id_max):
         subdir = 'train' if training else 'test'
-        save_dir = os.path.join(
-            base_dir, subdir, '{}-{:02d}'.format(subdir, uid))
+        save_dir = os.path.join(base_dir, subdir, '{}-{:02d}'.format(subdir, uid))
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
             return save_dir
@@ -103,8 +102,7 @@ class CheckpointSaver:
         self.best_val = None
         self.ckpt_paths = queue.PriorityQueue()
         self.log = log
-        self._print('Saver will {}imize {}...'
-                    .format('max' if maximize_metric else 'min', metric_name))
+        self._print('Saver will {}imize {}...'.format('max' if maximize_metric else 'min', metric_name))
 
     def is_best(self, metric_val):
         """Check whether `metric_val` is the best seen so far.
@@ -135,11 +133,7 @@ class CheckpointSaver:
             optimizer: optimizer
             metric_val (float): Determines whether checkpoint is best so far.
         """
-        ckpt_dict = {
-            'epoch': epoch,
-            'model_state': model.state_dict(),
-            'optimizer_state': optimizer.state_dict()
-        }
+        ckpt_dict = {'epoch': epoch, 'model_state': model.state_dict(), 'optimizer_state': optimizer.state_dict()}
 
         checkpoint_path = os.path.join(self.save_dir, 'last.pth.tar')
         torch.save(ckpt_dict, checkpoint_path)
@@ -163,8 +157,7 @@ def load_model_checkpoint(checkpoint_file, model, optimizer=None):
     return model
 
 
-def build_finetune_model(model_new, model_pretrained, num_rnn_layers,
-                         num_layers_frozen=0):
+def build_finetune_model(model_new, model_pretrained, num_rnn_layers, num_layers_frozen=0):
     """
     Load pretrained weights to DCRNN model
     """
@@ -174,6 +167,7 @@ def build_finetune_model(model_new, model_pretrained, num_rnn_layers,
         model_new.encoder.encoding_cells[l].dconv_candidate = model_pretrained.encoder.encoding_cells[l].dconv_candidate
 
     return model_new
+
 
 class AverageMeter:
     """Keep track of average values over time.
@@ -212,8 +206,7 @@ def calculate_normalized_laplacian(adj):
     d_inv_sqrt = np.power(d, -0.5).flatten()
     d_inv_sqrt[np.isinf(d_inv_sqrt)] = 0.
     d_mat_inv_sqrt = sp.diags(d_inv_sqrt)
-    normalized_laplacian = sp.eye(
-        adj.shape[0]) - adj.dot(d_mat_inv_sqrt).transpose().dot(d_mat_inv_sqrt).tocoo()
+    normalized_laplacian = sp.eye(adj.shape[0]) - adj.dot(d_mat_inv_sqrt).transpose().dot(d_mat_inv_sqrt).tocoo()
     return normalized_laplacian
 
 
@@ -259,13 +252,11 @@ def get_logger(log_dir, name, log_filename='info.log', level=logging.INFO):
     logger = logging.getLogger(name)
     logger.setLevel(level)
     # Add file handler and stdout handler
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     file_handler = logging.FileHandler(os.path.join(log_dir, log_filename))
     file_handler.setFormatter(formatter)
     # Add console handler.
-    console_formatter = logging.Formatter(
-        '%(asctime)s - %(levelname)s - %(message)s')
+    console_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(console_formatter)
     logger.addHandler(file_handler)
@@ -308,10 +299,8 @@ def eval_dict(y_pred, y, y_prob=None, file_names=None, average='macro'):
     if y is not None:
         scores_dict['acc'] = accuracy_score(y_true=y, y_pred=y_pred)
         scores_dict['F1'] = f1_score(y_true=y, y_pred=y_pred, average=average)
-        scores_dict['precision'] = precision_score(
-            y_true=y, y_pred=y_pred, average=average)
-        scores_dict['recall'] = recall_score(
-            y_true=y, y_pred=y_pred, average=average)
+        scores_dict['precision'] = precision_score(y_true=y, y_pred=y_pred, average=average)
+        scores_dict['recall'] = recall_score(y_true=y, y_pred=y_pred, average=average)
         if y_prob is not None:
             if len(set(y)) <= 2:  # binary case
                 scores_dict['auroc'] = roc_auc_score(y_true=y, y_score=y_prob)
@@ -358,6 +347,7 @@ def last_relevant_pytorch(output, lengths, batch_first=True):
 
 
 class Timer:
+
     def __init__(self):
         self.cache = datetime.now()
 
@@ -457,14 +447,13 @@ def masked_mse_loss(y_pred, y_true, mask_val=0.):
     return loss
 
 
-def compute_regression_loss(
-        y_true,
-        y_predicted,
-        standard_scaler=None,
-        device=None,
-        loss_fn='mae',
-        mask_val=0.,
-        is_tensor=True):
+def compute_regression_loss(y_true,
+                            y_predicted,
+                            standard_scaler=None,
+                            device=None,
+                            loss_fn='mae',
+                            mask_val=0.,
+                            is_tensor=True):
     """
     Compute masked MAE loss with inverse scaled y_true and y_predict
     Args:
@@ -481,13 +470,9 @@ def compute_regression_loss(
         y_predicted = y_predicted.to(device)
 
     if standard_scaler is not None:
-        y_true = standard_scaler.inverse_transform(y_true,
-                                                   is_tensor=is_tensor,
-                                                   device=device)
+        y_true = standard_scaler.inverse_transform(y_true, is_tensor=is_tensor, device=device)
 
-        y_predicted = standard_scaler.inverse_transform(y_predicted,
-                                                        is_tensor=is_tensor,
-                                                        device=device)
+        y_predicted = standard_scaler.inverse_transform(y_predicted, is_tensor=is_tensor, device=device)
 
     if loss_fn == 'mae':
         return masked_mae_loss(y_predicted, y_true, mask_val=mask_val)

@@ -29,9 +29,7 @@ def resample_all(raw_edf_dir, save_dir):
         try:
             f = pyedflib.EdfReader(edf_fn)
 
-            orderedChannels = getOrderedChannels(
-                edf_fn, False, f.getSignalLabels(), INCLUDED_CHANNELS
-            )
+            orderedChannels = getOrderedChannels(edf_fn, False, f.getSignalLabels(), INCLUDED_CHANNELS)
             signals = getEDFsignals(f)
             signal_array = np.array(signals[orderedChannels, :])
             sample_freq = f.getSampleFrequency(0)

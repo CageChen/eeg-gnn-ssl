@@ -37,8 +37,7 @@ def main(args):
     utils.seed_torch(seed=args.rand_seed)
 
     # Get save directories
-    args.save_dir = utils.get_save_dir(
-        args.save_dir, training=True if args.do_train else False)
+    args.save_dir = utils.get_save_dir(args.save_dir, training=True if args.do_train else False)
     # Save args
     args_file = os.path.join(args.save_dir, 'args.json')
     with open(args_file, 'w') as f:
@@ -52,71 +51,67 @@ def main(args):
     # Build dataset
     log.info('Building dataset...')
     if args.task == 'detection':
-        dataloaders, _, scaler = load_dataset_detection(
-            input_dir=args.input_dir,
-            raw_data_dir=args.raw_data_dir,
-            train_batch_size=args.train_batch_size,
-            test_batch_size=args.test_batch_size,
-            time_step_size=args.time_step_size,
-            max_seq_len=args.max_seq_len,
-            standardize=True,
-            num_workers=args.num_workers,
-            augmentation=args.data_augment,
-            adj_mat_dir='./data/electrode_graph/adj_mx_3d.pkl',
-            graph_type=args.graph_type,
-            top_k=args.top_k,
-            filter_type=args.filter_type,
-            use_fft=args.use_fft,
-            sampling_ratio=1,
-            seed=123,
-            preproc_dir=args.preproc_dir)
+        dataloaders, _, scaler = load_dataset_detection(input_dir=args.input_dir,
+                                                        raw_data_dir=args.raw_data_dir,
+                                                        train_batch_size=args.train_batch_size,
+                                                        test_batch_size=args.test_batch_size,
+                                                        time_step_size=args.time_step_size,
+                                                        max_seq_len=args.max_seq_len,
+                                                        standardize=True,
+                                                        num_workers=args.num_workers,
+                                                        augmentation=args.data_augment,
+                                                        adj_mat_dir='./data/electrode_graph/adj_mx_3d.pkl',
+                                                        graph_type=args.graph_type,
+                                                        top_k=args.top_k,
+                                                        filter_type=args.filter_type,
+                                                        use_fft=args.use_fft,
+                                                        sampling_ratio=1,
+                                                        seed=123,
+                                                        preproc_dir=args.preproc_dir)
     elif args.task == 'classification':
         if args.model_name != 'densecnn':
-            dataloaders, _, scaler = load_dataset_classification(
-                input_dir=args.input_dir,
-                raw_data_dir=args.raw_data_dir,
-                train_batch_size=args.train_batch_size,
-                test_batch_size=args.test_batch_size,
-                time_step_size=args.time_step_size,
-                max_seq_len=args.max_seq_len,
-                standardize=True,
-                num_workers=args.num_workers,
-                padding_val=0.,
-                augmentation=args.data_augment,
-                adj_mat_dir='./data/electrode_graph/adj_mx_3d.pkl',
-                graph_type=args.graph_type,
-                top_k=args.top_k,
-                filter_type=args.filter_type,
-                use_fft=args.use_fft,
-                preproc_dir=args.preproc_dir)
+            dataloaders, _, scaler = load_dataset_classification(input_dir=args.input_dir,
+                                                                 raw_data_dir=args.raw_data_dir,
+                                                                 train_batch_size=args.train_batch_size,
+                                                                 test_batch_size=args.test_batch_size,
+                                                                 time_step_size=args.time_step_size,
+                                                                 max_seq_len=args.max_seq_len,
+                                                                 standardize=True,
+                                                                 num_workers=args.num_workers,
+                                                                 padding_val=0.,
+                                                                 augmentation=args.data_augment,
+                                                                 adj_mat_dir='./data/electrode_graph/adj_mx_3d.pkl',
+                                                                 graph_type=args.graph_type,
+                                                                 top_k=args.top_k,
+                                                                 filter_type=args.filter_type,
+                                                                 use_fft=args.use_fft,
+                                                                 preproc_dir=args.preproc_dir)
         else:
             print("Using densecnn dataloader!")
-            dataloaders, _, scaler = load_dataset_densecnn_classification(
-                input_dir=args.input_dir,
-                raw_data_dir=args.raw_data_dir,
-                train_batch_size=args.train_batch_size,
-                test_batch_size=args.test_batch_size,
-                max_seq_len=args.max_seq_len,
-                standardize=True,
-                num_workers=args.num_workers,
-                padding_val=0.,
-                augmentation=args.data_augment,
-                use_fft=args.use_fft,
-                preproc_dir=args.preproc_dir
-            )
+            dataloaders, _, scaler = load_dataset_densecnn_classification(input_dir=args.input_dir,
+                                                                          raw_data_dir=args.raw_data_dir,
+                                                                          train_batch_size=args.train_batch_size,
+                                                                          test_batch_size=args.test_batch_size,
+                                                                          max_seq_len=args.max_seq_len,
+                                                                          standardize=True,
+                                                                          num_workers=args.num_workers,
+                                                                          padding_val=0.,
+                                                                          augmentation=args.data_augment,
+                                                                          use_fft=args.use_fft,
+                                                                          preproc_dir=args.preproc_dir)
     else:
         raise NotImplementedError
 
     # Build model
     log.info('Building model...')
     if args.model_name == "dcrnn":
-        model = DCRNNModel_classification(
-            args=args, num_classes=args.num_classes, device=device)
+        model = DCRNNModel_classification(args=args, num_classes=args.num_classes, device=device)
     elif args.model_name == "densecnn":
         with open("./model/dense_inception/params.json", "r") as f:
             params = json.load(f)
         params = DottedDict(params)
-        data_shape = (args.max_seq_len*100, args.num_nodes) if args.use_fft else (args.max_seq_len*200, args.num_nodes)
+        data_shape = (args.max_seq_len * 100, args.num_nodes) if args.use_fft else (args.max_seq_len * 200,
+                                                                                    args.num_nodes)
         model = DenseCNN(params, data_shape=data_shape, num_classes=args.num_classes)
     elif args.model_name == "lstm":
         model = LSTMModel(args, args.num_classes, device)
@@ -128,27 +123,19 @@ def main(args):
     if args.do_train:
         if not args.fine_tune:
             if args.load_model_path is not None:
-                model = utils.load_model_checkpoint(
-                    args.load_model_path, model)
+                model = utils.load_model_checkpoint(args.load_model_path, model)
         else:  # fine-tune from pretrained model
             if args.load_model_path is not None:
                 args_pretrained = copy.deepcopy(args)
-                setattr(
-                    args_pretrained,
-                    'num_rnn_layers',
-                    args.pretrained_num_rnn_layers)
-                pretrained_model = DCRNNModel_nextTimePred(
-                    args=args_pretrained, device=device)  # placeholder
-                pretrained_model = utils.load_model_checkpoint(
-                    args.load_model_path, pretrained_model)
+                setattr(args_pretrained, 'num_rnn_layers', args.pretrained_num_rnn_layers)
+                pretrained_model = DCRNNModel_nextTimePred(args=args_pretrained, device=device)  # placeholder
+                pretrained_model = utils.load_model_checkpoint(args.load_model_path, pretrained_model)
 
-                model = utils.build_finetune_model(
-                    model_new=model,
-                    model_pretrained=pretrained_model,
-                    num_rnn_layers=args.num_rnn_layers)
+                model = utils.build_finetune_model(model_new=model,
+                                                   model_pretrained=pretrained_model,
+                                                   num_rnn_layers=args.num_rnn_layers)
             else:
-                raise ValueError(
-                    'For fine-tuning, provide pretrained model in load_model_path!')
+                raise ValueError('For fine-tuning, provide pretrained model in load_model_path!')
 
         num_params = utils.count_parameters(model)
         log.info('Total number of trainable parameters: {}'.format(num_params))
@@ -174,8 +161,7 @@ def main(args):
                            nll_meter=None,
                            eval_set='dev')
 
-    dev_results_str = ', '.join('{}: {:.3f}'.format(k, v)
-                                for k, v in dev_results.items())
+    dev_results_str = ', '.join('{}: {:.3f}'.format(k, v) for k, v in dev_results.items())
     log.info('DEV set prediction results: {}'.format(dev_results_str))
 
     test_results = evaluate(model,
@@ -189,8 +175,7 @@ def main(args):
                             best_thresh=dev_results['best_thresh'])
 
     # Log to console
-    test_results_str = ', '.join('{}: {:.3f}'.format(k, v)
-                                 for k, v in test_results.items())
+    test_results_str = ', '.join('{}: {:.3f}'.format(k, v) for k, v in test_results.items())
     log.info('TEST set prediction results: {}'.format(test_results_str))
 
 
@@ -210,17 +195,13 @@ def train(model, dataloaders, args, device, save_dir, log, tbx):
     dev_loader = dataloaders['dev']
 
     # Get saver
-    saver = utils.CheckpointSaver(save_dir,
-                                  metric_name=args.metric_name,
-                                  maximize_metric=args.maximize_metric,
-                                  log=log)
+    saver = utils.CheckpointSaver(save_dir, metric_name=args.metric_name, maximize_metric=args.maximize_metric, log=log)
 
     # To train mode
     model.train()
 
     # Get optimizer and scheduler
-    optimizer = optim.Adam(params=model.parameters(),
-                           lr=args.lr_init, weight_decay=args.l2_wd)
+    optimizer = optim.Adam(params=model.parameters(), lr=args.lr_init, weight_decay=args.l2_wd)
     scheduler = CosineAnnealingLR(optimizer, T_max=args.num_epochs)
 
     # average meter for validation loss
@@ -257,49 +238,35 @@ def train(model, dataloaders, args, device, save_dir, log, tbx):
                 if args.model_name == "dcrnn":
                     logits = model(x, seq_lengths, supports)
                 elif args.model_name == "densecnn":
-                    x = x.transpose(-1, -2).reshape(batch_size, -1, args.num_nodes) # (batch_size, seq_len, num_nodes)
+                    x = x.transpose(-1, -2).reshape(batch_size, -1, args.num_nodes)  # (batch_size, seq_len, num_nodes)
                     logits = model(x)
                 elif args.model_name == "lstm" or args.model_name == "cnnlstm":
                     logits = model(x, seq_lengths)
                 else:
                     raise NotImplementedError
                 if logits.shape[-1] == 1:
-                    logits = logits.view(-1)  # (batch_size,)                
+                    logits = logits.view(-1)  # (batch_size,)
                 loss = loss_fn(logits, y)
                 loss_val = loss.item()
 
                 # Backward
                 loss.backward()
-                nn.utils.clip_grad_norm_(
-                    model.parameters(), args.max_grad_norm)
+                nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
                 optimizer.step()
                 step += batch_size
 
                 # Log info
                 progress_bar.update(batch_size)
-                progress_bar.set_postfix(epoch=epoch,
-                                         loss=loss_val,
-                                         lr=optimizer.param_groups[0]['lr'])
+                progress_bar.set_postfix(epoch=epoch, loss=loss_val, lr=optimizer.param_groups[0]['lr'])
 
                 tbx.add_scalar('train/Loss', loss_val, step)
-                tbx.add_scalar('train/LR',
-                               optimizer.param_groups[0]['lr'],
-                               step)
+                tbx.add_scalar('train/LR', optimizer.param_groups[0]['lr'], step)
 
             if epoch % args.eval_every == 0:
                 # Evaluate and save checkpoint
                 log.info('Evaluating at epoch {}...'.format(epoch))
-                eval_results = evaluate(model,
-                                        dev_loader,
-                                        args,
-                                        save_dir,
-                                        device,
-                                        is_test=False,
-                                        nll_meter=nll_meter)
-                best_path = saver.save(epoch,
-                                       model,
-                                       optimizer,
-                                       eval_results[args.metric_name])
+                eval_results = evaluate(model, dev_loader, args, save_dir, device, is_test=False, nll_meter=nll_meter)
+                best_path = saver.save(epoch, model, optimizer, eval_results[args.metric_name])
 
                 # Accumulate patience for early stopping
                 if eval_results['loss'] < prev_val_loss:
@@ -316,8 +283,7 @@ def train(model, dataloaders, args, device, save_dir, log, tbx):
                 model.train()
 
                 # Log to console
-                results_str = ', '.join('{}: {:.3f}'.format(k, v)
-                                        for k, v in eval_results.items())
+                results_str = ', '.join('{}: {:.3f}'.format(k, v) for k, v in eval_results.items())
                 log.info('Dev {}'.format(results_str))
 
                 # Log to TensorBoard
@@ -329,16 +295,7 @@ def train(model, dataloaders, args, device, save_dir, log, tbx):
         scheduler.step()
 
 
-def evaluate(
-        model,
-        dataloader,
-        args,
-        save_dir,
-        device,
-        is_test=False,
-        nll_meter=None,
-        eval_set='dev',
-        best_thresh=0.5):
+def evaluate(model, dataloader, args, save_dir, device, is_test=False, nll_meter=None, eval_set='dev', best_thresh=0.5):
     # To evaluate mode
     model.eval()
 
@@ -368,7 +325,7 @@ def evaluate(
             if args.model_name == "dcrnn":
                 logits = model(x, seq_lengths, supports)
             elif args.model_name == "densecnn":
-                x = x.transpose(-1, -2).reshape(batch_size, -1, args.num_nodes) # (batch_size, len*freq, num_nodes)
+                x = x.transpose(-1, -2).reshape(batch_size, -1, args.num_nodes)  # (batch_size, len*freq, num_nodes)
                 logits = model(x)
             elif args.model_name == "lstm" or args.model_name == "cnnlstm":
                 logits = model(x, seq_lengths)
@@ -418,11 +375,8 @@ def evaluate(
                                         average="binary" if args.task == "detection" else "weighted")
 
     eval_loss = nll_meter.avg if (nll_meter is not None) else loss.item()
-    results_list = [('loss', eval_loss),
-                    ('acc', scores_dict['acc']),
-                    ('F1', scores_dict['F1']),
-                    ('recall', scores_dict['recall']),
-                    ('precision', scores_dict['precision']),
+    results_list = [('loss', eval_loss), ('acc', scores_dict['acc']), ('F1', scores_dict['F1']),
+                    ('recall', scores_dict['recall']), ('precision', scores_dict['precision']),
                     ('best_thresh', best_thresh)]
     if 'auroc' in scores_dict.keys():
         results_list.append(('auroc', scores_dict['auroc']))

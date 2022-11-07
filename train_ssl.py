@@ -45,23 +45,22 @@ def main(args):
 
     # Build dataset
     log.info('Building dataset...')
-    dataloaders, _, scaler = load_dataset_ssl(
-        input_dir=args.input_dir,
-        raw_data_dir=args.raw_data_dir,
-        train_batch_size=args.train_batch_size,
-        test_batch_size=args.test_batch_size,
-        time_step_size=args.time_step_size,
-        input_len=args.max_seq_len,
-        output_len=args.output_seq_len,
-        standardize=True,
-        num_workers=args.num_workers,
-        augmentation=args.data_augment,
-        adj_mat_dir='./data/electrode_graph/adj_mx_3d.pkl',
-        graph_type=args.graph_type,
-        top_k=args.top_k,
-        filter_type=args.filter_type,
-        use_fft=args.use_fft,
-        preproc_dir=args.preproc_dir)
+    dataloaders, _, scaler = load_dataset_ssl(input_dir=args.input_dir,
+                                              raw_data_dir=args.raw_data_dir,
+                                              train_batch_size=args.train_batch_size,
+                                              test_batch_size=args.test_batch_size,
+                                              time_step_size=args.time_step_size,
+                                              input_len=args.max_seq_len,
+                                              output_len=args.output_seq_len,
+                                              standardize=True,
+                                              num_workers=args.num_workers,
+                                              augmentation=args.data_augment,
+                                              adj_mat_dir='./data/electrode_graph/adj_mx_3d.pkl',
+                                              graph_type=args.graph_type,
+                                              top_k=args.top_k,
+                                              filter_type=args.filter_type,
+                                              use_fft=args.use_fft,
+                                              preproc_dir=args.preproc_dir)
 
     # Build model
     log.info('Building model...')
@@ -71,13 +70,11 @@ def main(args):
     log.info('Total number of trainable parameters: {}'.format(num_params))
 
     if args.load_model_path is not None:
-        model = utils.load_model_checkpoint(
-            args.load_model_path, model)
+        model = utils.load_model_checkpoint(args.load_model_path, model)
     model = model.to(device)
 
     if args.do_train:
-        train(model, dataloaders, args, device, args.save_dir, log, tbx,
-              scaler=scaler)
+        train(model, dataloaders, args, device, args.save_dir, log, tbx, scaler=scaler)
         # Load best model after training finished
         best_path = os.path.join(args.save_dir, 'best.pth.tar')
         model = utils.load_model_checkpoint(best_path, model)
@@ -98,15 +95,7 @@ def main(args):
     log.info('Test set prediction MAE loss: {:.3f}'.format(test_loss))
 
 
-def train(
-        model,
-        dataloaders,
-        args,
-        device,
-        save_dir,
-        log,
-        tbx,
-        scaler=None):
+def train(model, dataloaders, args, device, save_dir, log, tbx, scaler=None):
     """
     Perform training and evaluate on dev set
     """
@@ -115,17 +104,13 @@ def train(
     dev_loader = dataloaders['dev']
 
     # Get saver
-    saver = utils.CheckpointSaver(save_dir,
-                                  metric_name=args.metric_name,
-                                  maximize_metric=args.maximize_metric,
-                                  log=log)
+    saver = utils.CheckpointSaver(save_dir, metric_name=args.metric_name, maximize_metric=args.maximize_metric, log=log)
 
     # To train mode
     model.train()
 
     # Get optimizer and scheduler
-    optimizer = optim.Adam(params=model.parameters(),
-                           lr=args.lr_init, weight_decay=args.l2_wd)
+    optimizer = optim.Adam(params=model.parameters(), lr=args.lr_init, weight_decay=args.l2_wd)
     scheduler = CosineAnnealingLR(optimizer, T_max=args.num_epochs)
 
     # average meter for validation loss
@@ -162,31 +147,25 @@ def train(
                 # (batch_size, seq_len, num_nodes, output_dim)
                 seq_preds = model(x, y, supports, batches_seen=step)
 
-                loss = utils.compute_regression_loss(
-                    y_true=y,
-                    y_predicted=seq_preds,
-                    loss_fn="MAE",
-                    standard_scaler=scaler,
-                    device=device)
+                loss = utils.compute_regression_loss(y_true=y,
+                                                     y_predicted=seq_preds,
+                                                     loss_fn="MAE",
+                                                     standard_scaler=scaler,
+                                                     device=device)
                 loss_val = loss.item()
 
                 # Backward
                 loss.backward()
-                nn.utils.clip_grad_norm_(
-                    model.parameters(), args.max_grad_norm)
+                nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
                 optimizer.step()
                 step += batch_size
 
                 # Log info
                 progress_bar.update(batch_size)
-                progress_bar.set_postfix(epoch=epoch,
-                                         loss=loss_val,
-                                         lr=optimizer.param_groups[0]['lr'])
+                progress_bar.set_postfix(epoch=epoch, loss=loss_val, lr=optimizer.param_groups[0]['lr'])
 
                 tbx.add_scalar('train/MAE Loss', loss_val, step)
-                tbx.add_scalar('train/LR',
-                               optimizer.param_groups[0]['lr'],
-                               step)
+                tbx.add_scalar('train/LR', optimizer.param_groups[0]['lr'], step)
 
             if epoch % args.eval_every == 0:
                 # Evaluate and save checkpoint
@@ -199,10 +178,7 @@ def train(
                                      is_test=False,
                                      nll_meter=nll_meter,
                                      scaler=scaler)
-                best_path = saver.save(epoch,
-                                       model,
-                                       optimizer,
-                                       eval_loss)
+                best_path = saver.save(epoch, model, optimizer, eval_loss)
 
                 # Accumulate patience for early stopping
                 if eval_loss < prev_val_loss:
@@ -223,15 +199,13 @@ def train(
 
                 # Log to TensorBoard
                 log.info('Visualizing in TensorBoard...')
-                tbx.add_scalar(
-                    'eval/{}'.format('MAE Loss'), eval_loss, step)
+                tbx.add_scalar('eval/{}'.format('MAE Loss'), eval_loss, step)
 
         # step lr scheduler
         scheduler.step()
 
 
-def evaluate(model, dataloader, args, save_dir, device, is_test=False,
-             nll_meter=None, scaler=None):
+def evaluate(model, dataloader, args, save_dir, device, is_test=False, nll_meter=None, scaler=None):
     # To evaluate mode
     model.eval()
 
@@ -253,12 +227,11 @@ def evaluate(model, dataloader, args, save_dir, device, is_test=False,
             # (batch_size, output_seq_len, num_nodes, output_dim)
             seq_preds = model(x, y, supports)
 
-            loss = utils.compute_regression_loss(
-                y_true=y,
-                y_predicted=seq_preds,
-                loss_fn="mae",
-                standard_scaler=scaler,
-                device=device)
+            loss = utils.compute_regression_loss(y_true=y,
+                                                 y_predicted=seq_preds,
+                                                 loss_fn="mae",
+                                                 standard_scaler=scaler,
+                                                 device=device)
 
             if nll_meter is not None:
                 nll_meter.update(loss.item(), batch_size)

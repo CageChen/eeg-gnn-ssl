@@ -32,8 +32,7 @@ def get_spectral_graph_positions():
         node_id_label[v] = k
     # Add edges
     for i in range(adj_mx.shape[0]):
-        for j in range(
-                adj_mx.shape[1]):  # do no include self-edge in visualization
+        for j in range(adj_mx.shape[1]):  # do no include self-edge in visualization
             if i != j and adj_mx[i, j] > 0:
                 eeg_viz.add_edge(i, j)
 
@@ -44,19 +43,16 @@ def get_spectral_graph_positions():
     return pos_spec
 
 
-def draw_graph_weighted_edge(
-        adj_mx,
-        node_id_dict,
-        pos_spec,
-        is_directed,
-        title='',
-        save_dir=None,
-        fig_size=(
-            12,
-            8),
-    node_color='Red',
-    font_size=20,
-        plot_colorbar=False):
+def draw_graph_weighted_edge(adj_mx,
+                             node_id_dict,
+                             pos_spec,
+                             is_directed,
+                             title='',
+                             save_dir=None,
+                             fig_size=(12, 8),
+                             node_color='Red',
+                             font_size=20,
+                             plot_colorbar=False):
     """
     Draw a graph with weighted edges
     Args:
@@ -92,9 +88,15 @@ def draw_graph_weighted_edge(
     cmap = matplotlib.colors.ListedColormap(cmap[len(weights):-1:(k - 1)])
 
     plt.figure(figsize=fig_size)
-    nx.draw_networkx(eeg_viz, pos_spec, labels=node_id_label, with_labels=True,
-                     edgelist=edges, edge_color=rankdata(weights),
-                     width=fig_size[1] / 2, edge_cmap=cmap, font_weight='bold',
+    nx.draw_networkx(eeg_viz,
+                     pos_spec,
+                     labels=node_id_label,
+                     with_labels=True,
+                     edgelist=edges,
+                     edge_color=rankdata(weights),
+                     width=fig_size[1] / 2,
+                     edge_cmap=cmap,
+                     font_weight='bold',
                      node_color=node_color,
                      node_size=250 * (fig_size[0] + fig_size[1]),
                      font_color='white',
@@ -102,9 +104,7 @@ def draw_graph_weighted_edge(
     plt.title(title, fontsize=font_size)
     plt.axis('off')
     if plot_colorbar:
-        sm = plt.cm.ScalarMappable(
-            cmap=cmap, norm=plt.Normalize(
-                vmin=0, vmax=1))
+        sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=1))
         sm.set_array([])
         plt.colorbar(sm)
     plt.tight_layout()

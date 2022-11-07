@@ -93,12 +93,10 @@ def getSeizureTimes(file_name):
         for line in f.readlines():
             if "seiz" in line:  # if seizure
                 # seizure start and end time
-                seizure_times.append(
-                    [
-                        float(line.strip().split(" ")[0]),
-                        float(line.strip().split(" ")[1]),
-                    ]
-                )
+                seizure_times.append([
+                    float(line.strip().split(" ")[0]),
+                    float(line.strip().split(" ")[1]),
+                ])
     return seizure_times
 
 
@@ -112,9 +110,7 @@ def getSeizureClass(file_name, target_labels_dict=None, file_type="edf"):
     Returns:
         seizure_class: list of seizure class in the .edf file
     """
-    label_dict = (
-        target_labels_dict if target_labels_dict is not None else ALL_LABEL_DICT
-    )
+    label_dict = (target_labels_dict if target_labels_dict is not None else ALL_LABEL_DICT)
     target_labels = list(label_dict.keys())
 
     tse_file = ""
@@ -128,9 +124,7 @@ def getSeizureClass(file_name, target_labels_dict=None, file_type="edf"):
     seizure_class = []
     with open(tse_file) as f:
         for line in f.readlines():
-            if any(
-                s in line for s in target_labels
-            ):  # if this is one of the seizure types of interest
+            if any(s in line for s in target_labels):  # if this is one of the seizure types of interest
                 seizure_str = [s for s in target_labels if s in line]
                 seizure_class.append(label_dict[seizure_str[0]])
     return seizure_class
@@ -214,10 +208,10 @@ def comp_xcorr(x, y, mode="valid", normalize=True):
     """
     xcorr = correlate(x, y, mode=mode)
     # the below normalization code refers to matlab xcorr function
-    cxx0 = np.sum(np.absolute(x) ** 2)
-    cyy0 = np.sum(np.absolute(y) ** 2)
+    cxx0 = np.sum(np.absolute(x)**2)
+    cyy0 = np.sum(np.absolute(y)**2)
     if normalize and (cxx0 != 0) and (cyy0 != 0):
-        scale = (cxx0 * cyy0) ** 0.5
+        scale = (cxx0 * cyy0)**0.5
         xcorr /= scale
     return xcorr
 

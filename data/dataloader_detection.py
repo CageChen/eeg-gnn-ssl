@@ -1,4 +1,5 @@
 import sys
+
 sys.path.append('../')
 import pyedflib
 import utils
@@ -22,13 +23,7 @@ sys.path.append(repo_paths)
 FILEMARKER_DIR = Path(repo_paths).joinpath('data/file_markers_detection')
 
 
-def computeSliceMatrix(
-        h5_fn,
-        edf_fn,
-        clip_idx,
-        time_step_size=1,
-        clip_len=60,
-        is_fft=False):
+def computeSliceMatrix(h5_fn, edf_fn, clip_idx, time_step_size=1, clip_len=60, is_fft=False):
     """
     Comvert entire EEG sequence into clips of length clip_len
     Args:
@@ -65,8 +60,7 @@ def computeSliceMatrix(
         # (num_channels, physical_time_step_size)
         curr_time_step = curr_slc[:, start_time_step:end_time_step]
         if is_fft:
-            curr_time_step, _ = computeFFT(
-                curr_time_step, n=physical_time_step_size)
+            curr_time_step, _ = computeFFT(curr_time_step, n=physical_time_step_size)
 
         time_steps.append(curr_time_step)
         start_time_step = end_time_step
@@ -85,8 +79,7 @@ def computeSliceMatrix(
     return eeg_clip, is_seizure
 
 
-def parseTxtFiles(split_type, seizure_file, nonseizure_file,
-                  cv_seed=123, scale_ratio=1):
+def parseTxtFiles(split_type, seizure_file, nonseizure_file, cv_seed=123, scale_ratio=1):
 
     np.random.seed(cv_seed)
 
@@ -128,24 +121,24 @@ def parseTxtFiles(split_type, seizure_file, nonseizure_file,
 
 
 class SeizureDataset(Dataset):
-    def __init__(
-            self,
-            input_dir,
-            raw_data_dir,
-            time_step_size=1,
-            max_seq_len=60,
-            standardize=True,
-            scaler=None,
-            split='train',
-            data_augment=False,
-            adj_mat_dir=None,
-            graph_type=None,
-            top_k=None,
-            filter_type='laplacian',
-            sampling_ratio=1,
-            seed=123,
-            use_fft=False,
-            preproc_dir=None):
+
+    def __init__(self,
+                 input_dir,
+                 raw_data_dir,
+                 time_step_size=1,
+                 max_seq_len=60,
+                 standardize=True,
+                 scaler=None,
+                 split='train',
+                 data_augment=False,
+                 adj_mat_dir=None,
+                 graph_type=None,
+                 top_k=None,
+                 filter_type='laplacian',
+                 sampling_ratio=1,
+                 seed=123,
+                 use_fft=False,
+                 preproc_dir=None):
         """
         Args:
             input_dir: dir to resampled signals h5 files
@@ -192,24 +185,9 @@ class SeizureDataset(Dataset):
                 if ".edf" in name:
                     self.edf_files.append(os.path.join(path, name))
 
-        seizure_file = os.path.join(
-            FILEMARKER_DIR,
-            split +
-            'Set_seq2seq_' +
-            str(max_seq_len) +
-            's_sz.txt')
-        nonSeizure_file = os.path.join(
-            FILEMARKER_DIR,
-            split +
-            'Set_seq2seq_' +
-            str(max_seq_len) +
-            's_nosz.txt')
-        self.file_tuples = parseTxtFiles(
-            split,
-            seizure_file,
-            nonSeizure_file,
-            cv_seed=seed,
-            scale_ratio=sampling_ratio)
+        seizure_file = os.path.join(FILEMARKER_DIR, split + 'Set_seq2seq_' + str(max_seq_len) + 's_sz.txt')
+        nonSeizure_file = os.path.join(FILEMARKER_DIR, split + 'Set_seq2seq_' + str(max_seq_len) + 's_nosz.txt')
+        self.file_tuples = parseTxtFiles(split, seizure_file, nonSeizure_file, cv_seed=seed, scale_ratio=sampling_ratio)
 
         self.size = len(self.file_tuples)
 
@@ -236,10 +214,9 @@ class SeizureDataset(Dataset):
         """
         swap_pairs = get_swap_pairs(INCLUDED_CHANNELS)
         EEG_seq_reflect = EEG_seq.copy()
-        if(np.random.choice([True, False])):
+        if (np.random.choice([True, False])):
             for pair in swap_pairs:
-                EEG_seq_reflect[:, [pair[0], pair[1]],
-                                :] = EEG_seq[:, [pair[1], pair[0]], :]
+                EEG_seq_reflect[:, [pair[0], pair[1]], :] = EEG_seq[:, [pair[1], pair[0]], :]
         else:
             swap_pairs = None
         return EEG_seq_reflect, swap_pairs
@@ -265,8 +242,7 @@ class SeizureDataset(Dataset):
             adj_mat: adjacency matrix, shape (num_nodes, num_nodes)
         """
         num_sensors = len(self.sensor_ids)
-        adj_mat = np.eye(num_sensors, num_sensors,
-                         dtype=np.float32)  # diagonal is 1
+        adj_mat = np.eye(num_sensors, num_sensors, dtype=np.float32)  # diagonal is 1
 
         # (num_nodes, seq_len, input_dim)
         eeg_clip = np.transpose(eeg_clip, (1, 0, 2))
@@ -281,19 +257,14 @@ class SeizureDataset(Dataset):
 
         if swap_nodes is not None:
             for node_pair in swap_nodes:
-                node_name0 = [
-                    key for key,
-                    val in sensor_id_to_ind.items() if val == node_pair[0]][0]
-                node_name1 = [
-                    key for key,
-                    val in sensor_id_to_ind.items() if val == node_pair[1]][0]
+                node_name0 = [key for key, val in sensor_id_to_ind.items() if val == node_pair[0]][0]
+                node_name1 = [key for key, val in sensor_id_to_ind.items() if val == node_pair[1]][0]
                 sensor_id_to_ind[node_name0] = node_pair[1]
                 sensor_id_to_ind[node_name1] = node_pair[0]
 
         for i in range(0, num_sensors):
             for j in range(i + 1, num_sensors):
-                xcorr = comp_xcorr(
-                    eeg_clip[i, :], eeg_clip[j, :], mode='valid', normalize=True)
+                xcorr = comp_xcorr(eeg_clip[i, :], eeg_clip[j, :], mode='valid', normalize=True)
                 adj_mat[i, j] = xcorr
                 adj_mat[j, i] = xcorr
 
@@ -325,10 +296,8 @@ class SeizureDataset(Dataset):
                     adj_mat_new[i, node_pair[0]] = adj_mat[i, node_pair[1]]
                     adj_mat_new[i, node_pair[1]] = adj_mat[i, node_pair[0]]
                     adj_mat_new[i, i] = 1
-                adj_mat_new[node_pair[0], node_pair[1]
-                            ] = adj_mat[node_pair[1], node_pair[0]]
-                adj_mat_new[node_pair[1], node_pair[0]
-                            ] = adj_mat[node_pair[0], node_pair[1]]
+                adj_mat_new[node_pair[0], node_pair[1]] = adj_mat[node_pair[1], node_pair[0]]
+                adj_mat_new[node_pair[1], node_pair[0]] = adj_mat[node_pair[0], node_pair[1]]
 
         return adj_mat_new
 
@@ -339,14 +308,12 @@ class SeizureDataset(Dataset):
         supports = []
         supports_mat = []
         if self.filter_type == "laplacian":  # ChebNet graph conv
-            supports_mat.append(
-                utils.calculate_scaled_laplacian(adj_mat, lambda_max=None))
+            supports_mat.append(utils.calculate_scaled_laplacian(adj_mat, lambda_max=None))
         elif self.filter_type == "random_walk":  # Forward random walk
             supports_mat.append(utils.calculate_random_walk_matrix(adj_mat).T)
         elif self.filter_type == "dual_random_walk":  # Bidirectional random walk
             supports_mat.append(utils.calculate_random_walk_matrix(adj_mat).T)
-            supports_mat.append(
-                utils.calculate_random_walk_matrix(adj_mat.T).T)
+            supports_mat.append(utils.calculate_random_walk_matrix(adj_mat.T).T)
         else:
             supports_mat.append(utils.calculate_scaled_laplacian(adj_mat))
         for support in supports_mat:
@@ -363,19 +330,19 @@ class SeizureDataset(Dataset):
         h5_fn, seizure_label = self.file_tuples[idx]
         clip_idx = int(h5_fn.split('_')[-1].split('.h5')[0])
 
-        edf_file = [file for file in self.edf_files if h5_fn.split('.edf')[
-            0] + '.edf' in file]
+        edf_file = [file for file in self.edf_files if h5_fn.split('.edf')[0] + '.edf' in file]
         assert len(edf_file) == 1
         edf_file = edf_file[0]
 
         # preprocess
         if self.preproc_dir is None:
-            resample_sig_dir = os.path.join(
-                self.input_dir, h5_fn.split('.edf')[0] + '.h5')
-            eeg_clip, is_seizure = computeSliceMatrix(
-                h5_fn=resample_sig_dir, edf_fn=edf_file, clip_idx=clip_idx,
-                time_step_size=self.time_step_size, clip_len=self.max_seq_len,
-                is_fft=self.use_fft)
+            resample_sig_dir = os.path.join(self.input_dir, h5_fn.split('.edf')[0] + '.h5')
+            eeg_clip, is_seizure = computeSliceMatrix(h5_fn=resample_sig_dir,
+                                                      edf_fn=edf_file,
+                                                      clip_idx=clip_idx,
+                                                      time_step_size=self.time_step_size,
+                                                      clip_len=self.max_seq_len,
+                                                      is_fft=self.use_fft)
         else:
             with h5py.File(os.path.join(self.preproc_dir, h5_fn), 'r') as hf:
                 eeg_clip = hf['clip'][()]
@@ -416,24 +383,23 @@ class SeizureDataset(Dataset):
         return (x, y, seq_len, indiv_supports, indiv_adj_mat, writeout_fn)
 
 
-def load_dataset_detection(
-        input_dir,
-        raw_data_dir,
-        train_batch_size,
-        test_batch_size=None,
-        time_step_size=1,
-        max_seq_len=60,
-        standardize=True,
-        num_workers=8,
-        augmentation=False,
-        adj_mat_dir=None,
-        graph_type=None,
-        top_k=None,
-        filter_type='laplacian',
-        use_fft=False,
-        sampling_ratio=1,
-        seed=123,
-        preproc_dir=None):
+def load_dataset_detection(input_dir,
+                           raw_data_dir,
+                           train_batch_size,
+                           test_batch_size=None,
+                           time_step_size=1,
+                           max_seq_len=60,
+                           standardize=True,
+                           num_workers=8,
+                           augmentation=False,
+                           adj_mat_dir=None,
+                           graph_type=None,
+                           top_k=None,
+                           filter_type='laplacian',
+                           use_fft=False,
+                           sampling_ratio=1,
+                           seed=123,
+                           preproc_dir=None):
     """
     Args:
         input_dir: dir to preprocessed h5 file
@@ -458,22 +424,13 @@ def load_dataset_detection(
         datasets: dictionary of train/dev/test datasets
         scaler: standard scaler
     """
-    if (graph_type is not None) and (
-            graph_type not in ['individual', 'combined']):
+    if (graph_type is not None) and (graph_type not in ['individual', 'combined']):
         raise NotImplementedError
 
     # load mean and std
     if standardize:
-        means_dir = os.path.join(
-            FILEMARKER_DIR,
-            'means_seq2seq_fft_' +
-            str(max_seq_len) +
-            's_szdetect_single.pkl')
-        stds_dir = os.path.join(
-            FILEMARKER_DIR,
-            'stds_seq2seq_fft_' +
-            str(max_seq_len) +
-            's_szdetect_single.pkl')
+        means_dir = os.path.join(FILEMARKER_DIR, 'means_seq2seq_fft_' + str(max_seq_len) + 's_szdetect_single.pkl')
+        stds_dir = os.path.join(FILEMARKER_DIR, 'stds_seq2seq_fft_' + str(max_seq_len) + 's_szdetect_single.pkl')
         with open(means_dir, 'rb') as f:
             means = pickle.load(f)
         with open(stds_dir, 'rb') as f:
@@ -515,10 +472,7 @@ def load_dataset_detection(
             shuffle = False
             batch_size = test_batch_size
 
-        loader = DataLoader(dataset=dataset,
-                            shuffle=shuffle,
-                            batch_size=batch_size,
-                            num_workers=num_workers)
+        loader = DataLoader(dataset=dataset, shuffle=shuffle, batch_size=batch_size, num_workers=num_workers)
         dataloaders[split] = loader
         datasets[split] = dataset
 
